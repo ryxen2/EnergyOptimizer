@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -54,13 +55,32 @@ def load_and_clean_data(file_name, file_label):
 
 # --- Load Data ---
 
-df_eco = load_and_clean_data("7_11_2025_eco.CSV", "7_11_2025_eco")
-df_03 = load_and_clean_data("03_11_2025_(1).csv", "03_11_2025_alt")
-df_01 = load_and_clean_data("01_11_2025.csv", "01_11_2025")
-df_02 = load_and_clean_data("02_11_2025.csv", "02_11_2025")
-df_04 = load_and_clean_data("04_11_2025.csv", "04_11_2025")
-df_05 = load_and_clean_data("05_11_2025.csv", "05_11_2025")
-combined_df = pd.concat([df_eco, df_03, df_01, df_02, df_04, df_05])
+@st.cache_data
+def load_all_csvs(folder_path="data"):
+    data_dict = {}
+    csv_files = [f for f in os.listdir(folder_path) if f.endswith(".CSV") or f.endswith(".csv")]
+    
+    if not csv_files:
+        st.error(f"No CSV files found in folder: {folder_path}")
+        return pd.DataFrame()  # empty fallback
+
+    for file_name in csv_files:
+        file_path = os.path.join(folder_path, file_name)
+        label = os.path.splitext(file_name)[0]  # file name without extension
+        try:
+            df = load_and_clean_data(file_path, label)
+            data_dict[label] = df
+        except Exception as e:
+            st.warning(f"Failed to load {file_name}: {e}")
+
+    if data_dict:
+        combined_df = pd.concat(data_dict.values())
+        return combined_df
+    else:
+        return pd.DataFrame()
+
+# --- Replace manual CSV loading with automatic loader ---
+combined_df = load_all_csvs("data")  # folder where all your CSVs are stored
 
 
 # --- Helper Function for Plotting Time Series (using Plotly) ---
